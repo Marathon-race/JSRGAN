@@ -23,7 +23,7 @@ parser.add_argument('--num_epochs', default=100, type=int, help='train epoch num
 
 
 if __name__ == '__main__':
-    os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '1'
     opt = parser.parse_args()
     
     CROP_SIZE = opt.crop_size
@@ -33,8 +33,8 @@ if __name__ == '__main__':
     # 加载数据集
     train_set = TrainDatasetFromFolder('data/DIV2K/train', crop_size=CROP_SIZE, upscale_factor=UPSCALE_FACTOR)
     val_set = ValDatasetFromFolder('data/DIV2K/val', upscale_factor=UPSCALE_FACTOR)
-    train_loader = DataLoader(dataset=train_set, num_workers=4, batch_size=64, shuffle=True)
-    val_loader = DataLoader(dataset=val_set, num_workers=4, batch_size=1, shuffle=False)
+    train_loader = DataLoader(dataset=train_set, num_workers=4, batch_size=64, shuffle=True,drop_last=True)
+    val_loader = DataLoader(dataset=val_set, num_workers=4, batch_size=1, shuffle=False,drop_last=True)
     # 加载网络模型
     netG = Generator(UPSCALE_FACTOR)
     print('# generator parameters:', sum(param.numel() for param in netG.parameters()))
@@ -133,6 +133,7 @@ if __name__ == '__main__':
                 if torch.cuda.is_available():
                     lr = lr.cuda()
                     hr = hr.cuda()
+                
                 sr = netG(lr)  # 直接输出结果，没有参数优化的过程
         
                 batch_mse = ((sr - hr) ** 2).data.mean()
