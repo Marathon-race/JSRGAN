@@ -11,34 +11,34 @@ class Generator(nn.Module):
 
         super(Generator, self).__init__()
         self.block1 = nn.Sequential(
-            nn.Conv2d(3, 16, kernel_size=9, padding=4),
+            nn.Conv2d(3, 64, kernel_size=9, padding=4),
             nn.PReLU()
         )
         
         self.block7 = nn.Sequential(
-            nn.Conv2d(16, 16, kernel_size=3, padding=1),
-            nn.BatchNorm2d(16)
+            nn.Conv2d(64, 64, kernel_size=3, padding=1),
+            nn.BatchNorm2d(64)
         )
-        block8 = [UpsampleBLock(16, 2) for _ in range(upsample_block_num)]
-        block8.append(nn.Conv2d(16, 3, kernel_size=9, padding=4))
+        block8 = [UpsampleBLock(64, 2) for _ in range(upsample_block_num)]
+        block8.append(nn.Conv2d(64, 3, kernel_size=9, padding=4))
         self.block8 = nn.Sequential(*block8)
-        self.CBAM = CBAM(channel=16)
+        self.CBAM = CBAM(channel=64)
     def forward(self, x):
         block1 = self.block1(x)
 
-        y = RSBU_CW(in_channels=16, out_channels=16)(block1)
+        y = RSBU_CW(in_channels=64, out_channels=64)(block1)
         block2 = self.CBAM(y)
 
-        y = RSBU_CW(in_channels=16, out_channels=16)(block2)
+        y = RSBU_CW(in_channels=64, out_channels=64)(block2)
         block3 = self.CBAM(y)
 
-        y = RSBU_CW(in_channels=16, out_channels=16)(block3)
+        y = RSBU_CW(in_channels=64, out_channels=64)(block3)
         block4 = self.CBAM(y)
 
-        y = RSBU_CW(in_channels=16, out_channels=16)(block4)
+        y = RSBU_CW(in_channels=64, out_channels=64)(block4)
         block5 = self.CBAM(y)
 
-        y = RSBU_CW(in_channels=16, out_channels=16)(block5)
+        y = RSBU_CW(in_channels=64, out_channels=64)(block5)
         block6 = self.CBAM(y)
 
         block7 = self.block7(block6)
@@ -90,6 +90,7 @@ class Discriminator(nn.Module):
     def forward(self, x):
         batch_size = x.size(0)
         return torch.sigmoid(self.net(x).view(batch_size))
+
 class UpsampleBLock(nn.Module):
     def __init__(self, in_channels, up_scale):
         super(UpsampleBLock, self).__init__()
