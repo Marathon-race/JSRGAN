@@ -43,8 +43,32 @@ class Generator(nn.Module):
 
         block7 = self.block7(block6)
         block8 = self.block8(block1 + block7)
+        block9 = (torch.tanh(block8) + 1) / 2
 
-        return (torch.tanh(block8) + 1) / 2
+        block_11 = self.block1(x)
+
+        y = RSBU_CW(in_channels=64, out_channels=64)(block_11)
+        block_12 = self.CBAM(y)
+
+        y = RSBU_CW(in_channels=64, out_channels=64)(block_12)
+        block_13 = self.CBAM(y)
+
+        y = RSBU_CW(in_channels=64, out_channels=64)(block_13)
+        block_14 = self.CBAM(y)
+
+        y = RSBU_CW(in_channels=64, out_channels=64)(block_14)
+        block_15 = self.CBAM(y)
+
+        y = RSBU_CW(in_channels=64, out_channels=64)(block_15)
+        block_16 = self.CBAM(y)
+
+        block_17 = self.block7(block_16)
+        block_18 = self.block8(block_11 + block_17)
+        block_19 = (torch.tanh(block_18) + 1) / 2
+
+        feature = torch.add(block9, block_19)
+
+        return feature
 
 class Discriminator(nn.Module):
     def __init__(self):
@@ -90,7 +114,6 @@ class Discriminator(nn.Module):
     def forward(self, x):
         batch_size = x.size(0)
         return torch.sigmoid(self.net(x).view(batch_size))
-
 class UpsampleBLock(nn.Module):
     def __init__(self, in_channels, up_scale):
         super(UpsampleBLock, self).__init__()
