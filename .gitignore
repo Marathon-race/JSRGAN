@@ -4,3 +4,4 @@ epochs/*
 training_results/*
 __pycache__
 pytorch_ssim/*
+*.csv
