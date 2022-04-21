@@ -43,7 +43,6 @@ class Generator(nn.Module):
 
         block7 = self.block7(block6)
         block8 = self.block8(block1 + block7)
-        block9 = (torch.tanh(block8) + 1) / 2
 
         block_11 = self.block1(x)
 
@@ -64,9 +63,9 @@ class Generator(nn.Module):
 
         block_17 = self.block7(block_16)
         block_18 = self.block8(block_11 + block_17)
-        block_19 = (torch.tanh(block_18) + 1) / 2
 
-        feature = torch.add(block9, block_19)
+        feature = torch.add(block8, block_18)
+        feature = (torch.tanh(feature) + 1) / 2
 
         return feature
 
