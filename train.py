@@ -1,5 +1,6 @@
-import argparse
 import os
+os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+import argparse
 from math import log10
 
 import pandas as pd
@@ -23,7 +24,10 @@ parser.add_argument('--num_epochs', default=100, type=int, help='train epoch num
 
 
 if __name__ == '__main__':
-    os.environ['CUDA_VISIBLE_DEVICES'] = '1'
+    print("pytorch的版本：", torch.__version__)
+    print("pytorch是否使用gpu：", torch.cuda.is_available())
+    print(torch.cuda.get_device_name(0))
+    print(torch.cuda.current_device())
     opt = parser.parse_args()
     
     CROP_SIZE = opt.crop_size
@@ -31,9 +35,9 @@ if __name__ == '__main__':
     NUM_EPOCHS = opt.num_epochs
 
     # 加载数据集
-    train_set = TrainDatasetFromFolder('data/DIV2K/train', crop_size=CROP_SIZE, upscale_factor=UPSCALE_FACTOR)
-    val_set = ValDatasetFromFolder('data/DIV2K/val', upscale_factor=UPSCALE_FACTOR)
-    train_loader = DataLoader(dataset=train_set, num_workers=4, batch_size=64, shuffle=True,drop_last=True)
+    train_set = TrainDatasetFromFolder('data/VOC2012/train', crop_size=CROP_SIZE, upscale_factor=UPSCALE_FACTOR)
+    val_set = ValDatasetFromFolder('data/VOC2012/val', upscale_factor=UPSCALE_FACTOR)
+    train_loader = DataLoader(dataset=train_set, num_workers=4, batch_size=4, shuffle=True,drop_last=True)
     val_loader = DataLoader(dataset=val_set, num_workers=4, batch_size=1, shuffle=False,drop_last=True)
     # 加载网络模型
     netG = Generator(UPSCALE_FACTOR)
@@ -44,11 +48,10 @@ if __name__ == '__main__':
     # 加载loss函数
     generator_criterion = GeneratorLoss()
     # 判断GPU加速
-    if torch.cuda.is_available():
-        netG.cuda()
-        netD.cuda()
-        generator_criterion.cuda()
-
+    # if torch.cuda.is_available():
+    netG = netG.cuda()
+    netD = netD.cuda()
+    generator_criterion.cuda()
     # 定义Adam优化器
     optimizerG = optim.Adam(netG.parameters())
     optimizerD = optim.Adam(netD.parameters())
@@ -77,6 +80,7 @@ if __name__ == '__main__':
             z = Variable(data)  # torch数据类型的输入图像z
             if torch.cuda.is_available():
                 z = z.cuda()
+
             fake_img = netG(z)  # 生成的超分辨图像
     
             netD.zero_grad()  # 判别网络的梯度归零

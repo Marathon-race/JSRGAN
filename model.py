@@ -23,22 +23,23 @@ class Generator(nn.Module):
         block8.append(nn.Conv2d(64, 3, kernel_size=9, padding=4))
         self.block8 = nn.Sequential(*block8)
         self.CBAM = CBAM(channel=64)
+        self.RSBU_CW = RSBU_CW(in_channels=64, out_channels=64)
     def forward(self, x):
         block1 = self.block1(x)
 
-        y = RSBU_CW(in_channels=64, out_channels=64)(block1)
+        y = self.RSBU_CW(block1)
         block2 = self.CBAM(y)
 
-        y = RSBU_CW(in_channels=64, out_channels=64)(block2)
+        y = self.RSBU_CW(block2)
         block3 = self.CBAM(y)
 
-        y = RSBU_CW(in_channels=64, out_channels=64)(block3)
+        y = self.RSBU_CW(block3)
         block4 = self.CBAM(y)
 
-        y = RSBU_CW(in_channels=64, out_channels=64)(block4)
+        y = self.RSBU_CW(block4)
         block5 = self.CBAM(y)
 
-        y = RSBU_CW(in_channels=64, out_channels=64)(block5)
+        y = self.RSBU_CW(block5)
         block6 = self.CBAM(y)
 
         block7 = self.block7(block6)
@@ -46,19 +47,19 @@ class Generator(nn.Module):
 
         block_11 = self.block1(x)
 
-        y = RSBU_CW(in_channels=64, out_channels=64)(block_11)
+        y = self.RSBU_CW(block_11)
         block_12 = self.CBAM(y)
 
-        y = RSBU_CW(in_channels=64, out_channels=64)(block_12)
+        y = self.RSBU_CW(block_12)
         block_13 = self.CBAM(y)
 
-        y = RSBU_CW(in_channels=64, out_channels=64)(block_13)
+        y = self.RSBU_CW(block_13)
         block_14 = self.CBAM(y)
 
-        y = RSBU_CW(in_channels=64, out_channels=64)(block_14)
+        y = self.RSBU_CW(block_14)
         block_15 = self.CBAM(y)
 
-        y = RSBU_CW(in_channels=64, out_channels=64)(block_15)
+        y = self.RSBU_CW(block_15)
         block_16 = self.CBAM(y)
 
         block_17 = self.block7(block_16)
