@@ -35,7 +35,7 @@ class Shrinkage(nn.Module):
         self.gap = nn.AdaptiveAvgPool2d(gap_size)
         self.fc = nn.Sequential(
             nn.Linear(channel, channel),
-            # nn.BatchNorm1d(channel),
+            nn.BatchNorm1d(channel),
             nn.ReLU(inplace=True),
             nn.Linear(channel, channel),
             nn.Sigmoid(),
