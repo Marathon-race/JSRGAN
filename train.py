@@ -52,7 +52,8 @@ if __name__ == '__main__':
     netG = netG.cuda()
     netD = netD.cuda()
     generator_criterion.cuda()
-    # 定义Adam优化器
+    # 构建优化器optimizer，传入模型所有参数，使用Adam参数优化算法，调用step（）可进行一次模型参数优化
+    # Adam - 自适应学习率+适用非凸优化
     optimizerG = optim.Adam(netG.parameters())
     optimizerD = optim.Adam(netD.parameters())
     # 定义结果保存的字典，值为列表
