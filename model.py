@@ -15,6 +15,12 @@ class Generator(nn.Module):
             nn.PReLU()
         )
         
+        self.block2 = ResidualBlock(64)
+        self.block3 = ResidualBlock(64)
+        self.block4 = ResidualBlock(64)
+        self.block5 = ResidualBlock(64)
+        self.block6 = ResidualBlock(64)
+
         self.block7 = nn.Sequential(
             nn.Conv2d(64, 64, kernel_size=3, padding=1),
             nn.BatchNorm2d(64)
@@ -22,50 +28,26 @@ class Generator(nn.Module):
         block8 = [UpsampleBLock(64, 2) for _ in range(upsample_block_num)]
         block8.append(nn.Conv2d(64, 3, kernel_size=9, padding=4))
         self.block8 = nn.Sequential(*block8)
-        self.CBAM = CBAM(channel=64)
-        self.RSBU_CW = RSBU_CW(in_channels=64, out_channels=64)
     def forward(self, x):
         block1 = self.block1(x)
-
-        y = self.RSBU_CW(block1)
-        block2 = self.CBAM(y)
-
-        y = self.RSBU_CW(block2)
-        block3 = self.CBAM(y)
-
-        y = self.RSBU_CW(block3)
-        block4 = self.CBAM(y)
-
-        y = self.RSBU_CW(block4)
-        block5 = self.CBAM(y)
-
-        y = self.RSBU_CW(block5)
-        block6 = self.CBAM(y)
-
+        block2 = self.block2(block1)
+        block3 = self.block3(block2)
+        block4 = self.block4(block3)
+        block5 = self.block5(block4)
+        block6 = self.block6(block5)
         block7 = self.block7(block6)
         block8 = self.block8(block1 + block7)
 
-        block_11 = self.block1(x)
+        block_1 = self.block1(x)
+        block_2 = self.block2(block_1)
+        block_3 = self.block3(block_2)
+        block_4 = self.block4(block_3)
+        block_5 = self.block5(block_4)
+        block_6 = self.block6(block_5)
+        block_7 = self.block7(block_6)
+        block_8 = self.block8(block_1 + block_7)
 
-        y = self.RSBU_CW(block_11)
-        block_12 = self.CBAM(y)
-
-        y = self.RSBU_CW(block_12)
-        block_13 = self.CBAM(y)
-
-        y = self.RSBU_CW(block_13)
-        block_14 = self.CBAM(y)
-
-        y = self.RSBU_CW(block_14)
-        block_15 = self.CBAM(y)
-
-        y = self.RSBU_CW(block_15)
-        block_16 = self.CBAM(y)
-
-        block_17 = self.block7(block_16)
-        block_18 = self.block8(block_11 + block_17)
-
-        feature = torch.add(block8, block_18)
+        feature = torch.add(block8, block_8)
         feature = (torch.tanh(feature) + 1) / 2
 
         return feature
@@ -114,16 +96,94 @@ class Discriminator(nn.Module):
     def forward(self, x):
         batch_size = x.size(0)
         return torch.sigmoid(self.net(x).view(batch_size))
+
+
 class UpsampleBLock(nn.Module):
     def __init__(self, in_channels, up_scale):
         super(UpsampleBLock, self).__init__()
         self.conv = nn.Conv2d(in_channels, in_channels * up_scale ** 2, kernel_size=3, padding=1)
         self.pixel_shuffle = nn.PixelShuffle(up_scale)
         self.prelu = nn.PReLU()
+        self.rfb = ReceptiveFieldBlock(in_channels, in_channels)
 
     def forward(self, x):
+        x = self.rfb(x)
         x = self.conv(x)
         x = self.pixel_shuffle(x)
         x = self.prelu(x)
         return x
 
+class ResidualBlock(nn.Module):
+    def __init__(self, channels):
+        super(ResidualBlock, self).__init__()
+        self.CBAM = CBAM(channels)
+        self.RSBU_CW = RSBU_CW(channels, channels)
+
+    def forward(self, x):
+        residual = self.RSBU_CW(x)
+        residual = self.CBAM(residual)
+
+        return x + residual
+
+class ReceptiveFieldBlock(nn.Module):
+    def __init__(self, in_channels: int, out_channels: int):
+        """Modules introduced in RFBNet paper.
+        Args:
+            in_channels (int): Number of channels in the input image.
+            out_channels (int): Number of channels produced by the convolution.
+        """
+
+        super(ReceptiveFieldBlock, self).__init__()
+        branch_channels = in_channels // 4
+
+        # shortcut layer
+        self.shortcut = nn.Conv2d(in_channels, out_channels, (1, 1), (1, 1), (0, 0))
+
+        self.branch1 = nn.Sequential(
+            nn.Conv2d(in_channels, branch_channels, (1, 1), (1, 1), (0, 0)),
+            nn.LeakyReLU(0.2, True),
+            nn.Conv2d(branch_channels, branch_channels, (3, 3), (1, 1), (1, 1), dilation=1),
+        )
+
+        self.branch2 = nn.Sequential(
+            nn.Conv2d(in_channels, branch_channels, (1, 1), (1, 1), (0, 0)),
+            nn.LeakyReLU(0.2, True),
+            nn.Conv2d(branch_channels, branch_channels, (1, 3), (1, 1), (0, 1)),
+            nn.LeakyReLU(0.2, True),
+            nn.Conv2d(branch_channels, branch_channels, (3, 3), (1, 1), (3, 3), dilation=3),
+        )
+
+        self.branch3 = nn.Sequential(
+            nn.Conv2d(in_channels, branch_channels, (1, 1), (1, 1), (0, 0)),
+            nn.LeakyReLU(0.2, True),
+            nn.Conv2d(branch_channels, branch_channels, (3, 1), (1, 1), (1, 0)),
+            nn.LeakyReLU(0.2, True),
+            nn.Conv2d(branch_channels, branch_channels, (3, 3), (1, 1), (3, 3), dilation=3),
+        )
+
+        self.branch4 = nn.Sequential(
+            nn.Conv2d(in_channels, branch_channels // 2, (1, 1), (1, 1), (0, 0)),
+            nn.LeakyReLU(0.2, True),
+            nn.Conv2d(branch_channels // 2, (branch_channels // 4) * 3, (1, 3), (1, 1), (0, 1)),
+            nn.LeakyReLU(0.2, True),
+            nn.Conv2d((branch_channels // 4) * 3, branch_channels, (3, 1), (1, 1), (1, 0)),
+            nn.LeakyReLU(0.2, True),
+            nn.Conv2d(branch_channels, branch_channels, (3, 3), (1, 1), (5, 5), dilation=5),
+        )
+
+        self.conv_linear = nn.Conv2d(4 * branch_channels, out_channels, (1, 1), (1, 1), (0, 0))
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        shortcut = self.shortcut(x)
+        shortcut = torch.mul(shortcut, 0.2)
+
+        branch1 = self.branch1(x)
+        branch2 = self.branch2(x)
+        branch3 = self.branch3(x)
+        branch4 = self.branch4(x)
+
+        out = torch.cat([branch1, branch2, branch3, branch4], 1)
+        out = self.conv_linear(out)
+        out = torch.add(out, shortcut)
+
+        return out

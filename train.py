@@ -37,7 +37,7 @@ if __name__ == '__main__':
     # 加载数据集
     train_set = TrainDatasetFromFolder('data/VOC2012/train', crop_size=CROP_SIZE, upscale_factor=UPSCALE_FACTOR)
     val_set = ValDatasetFromFolder('data/VOC2012/val', upscale_factor=UPSCALE_FACTOR)
-    train_loader = DataLoader(dataset=train_set, num_workers=4, batch_size=4, shuffle=True,drop_last=True)
+    train_loader = DataLoader(dataset=train_set, num_workers=4, batch_size=16, shuffle=True,drop_last=True)
     val_loader = DataLoader(dataset=val_set, num_workers=4, batch_size=1, shuffle=False,drop_last=True)
     # 加载网络模型
     netG = Generator(UPSCALE_FACTOR)
