@@ -38,16 +38,7 @@ class Generator(nn.Module):
         block7 = self.block7(block6)
         block8 = self.block8(block1 + block7)
 
-        block_1 = self.block1(x)
-        block_2 = self.block2(block_1)
-        block_3 = self.block3(block_2)
-        block_4 = self.block4(block_3)
-        block_5 = self.block5(block_4)
-        block_6 = self.block6(block_5)
-        block_7 = self.block7(block_6)
-        block_8 = self.block8(block_1 + block_7)
-
-        feature = torch.add(block8, block_8)
+        feature = torch.add(block8, block8)
         feature = (torch.tanh(feature) + 1) / 2
 
         return feature
@@ -116,12 +107,12 @@ class UpsampleBLock(nn.Module):
 class ResidualBlock(nn.Module):
     def __init__(self, channels):
         super(ResidualBlock, self).__init__()
-        self.CBAM = CBAM(channels)
+        # self.CBAM = CBAM(channels)
         self.RSBU_CW = RSBU_CW(channels, channels)
 
     def forward(self, x):
         residual = self.RSBU_CW(x)
-        residual = self.CBAM(residual)
+        # residual = self.CBAM(residual)
 
         return x + residual
 
