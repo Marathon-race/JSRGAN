@@ -27,8 +27,8 @@ results = {'Set5': {'psnr': [], 'ssim': []}, 'Set14': {'psnr': [], 'ssim': []}, 
            'Urban100': {'psnr': [], 'ssim': []}, 'SunHays80': {'psnr': [], 'ssim': []}}
 
 model = Generator(UPSCALE_FACTOR).eval()
-if torch.cuda.is_available():
-    model = model.cuda()
+# if torch.cuda.is_available():
+#     model = model.cuda()
 model.load_state_dict(torch.load('epochs/' + MODEL_NAME))
 
 test_set = TestDatasetFromFolder('data/test', upscale_factor=UPSCALE_FACTOR)
@@ -43,9 +43,9 @@ for image_name, lr_image, hr_restore_img, hr_image in test_bar:
     image_name = image_name[0]
     lr_image = Variable(lr_image, volatile=True)
     hr_image = Variable(hr_image, volatile=True)
-    if torch.cuda.is_available():
-        lr_image = lr_image.cuda()
-        hr_image = hr_image.cuda()
+    # if torch.cuda.is_available():
+    #     lr_image = lr_image.cuda()
+    #     hr_image = hr_image.cuda()
 
     sr_image = model(lr_image)
     mse = ((hr_image - sr_image) ** 2).data.mean()

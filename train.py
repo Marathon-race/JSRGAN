@@ -1,5 +1,5 @@
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 import argparse
 from math import log10
 
@@ -20,7 +20,7 @@ parser = argparse.ArgumentParser(description='Train Super Resolution Models')
 parser.add_argument('--crop_size', default=88, type=int, help='training images crop size')
 parser.add_argument('--upscale_factor', default=4, type=int, choices=[2, 4, 8],
                     help='super resolution upscale factor')
-parser.add_argument('--num_epochs', default=100, type=int, help='train epoch number')
+parser.add_argument('--num_epochs', default=10000, type=int, help='train epoch number')
 
 
 if __name__ == '__main__':
@@ -35,9 +35,9 @@ if __name__ == '__main__':
     NUM_EPOCHS = opt.num_epochs
 
     # 加载数据集
-    train_set = TrainDatasetFromFolder('data/VOC2012/train', crop_size=CROP_SIZE, upscale_factor=UPSCALE_FACTOR)
-    val_set = ValDatasetFromFolder('data/VOC2012/val', upscale_factor=UPSCALE_FACTOR)
-    train_loader = DataLoader(dataset=train_set, num_workers=4, batch_size=16, shuffle=True,drop_last=True)
+    train_set = TrainDatasetFromFolder('data/DIV2K/train', crop_size=CROP_SIZE, upscale_factor=UPSCALE_FACTOR)
+    val_set = ValDatasetFromFolder('data/DIV2K/val', upscale_factor=UPSCALE_FACTOR)
+    train_loader = DataLoader(dataset=train_set, num_workers=4, batch_size=64, shuffle=True,drop_last=True)
     val_loader = DataLoader(dataset=val_set, num_workers=4, batch_size=1, shuffle=False,drop_last=True)
     # 加载网络模型
     netG = Generator(UPSCALE_FACTOR)
@@ -59,7 +59,22 @@ if __name__ == '__main__':
     # 定义结果保存的字典，值为列表
     results = {'d_loss': [], 'g_loss': [], 'd_score': [], 'g_score': [], 'psnr': [], 'ssim': []}
     
-    for epoch in range(1, NUM_EPOCHS + 1):
+    # 断点继续
+    optimizer = torch.optim.SGD(netG.parameters(),lr=0.1)
+    lr_schedule = torch.optim.lr_scheduler.MultiStepLR(optimizer,milestones=[10,20,30,40,50],gamma=0.1)
+    start_epoch = 0
+    RESUME = True # 是否为中断继续(想要继续的话，就把这里变成True。重新开始的话就改为False)
+    if RESUME:
+        path_checkpoint = "model_parameter/ckpt_best_6040.pth"  # 断点路径 (!!!!!!每次都要修改数的大小)
+        checkpoint = torch.load(path_checkpoint)  # 加载断点
+
+        netG.load_state_dict(checkpoint['net'])  # 加载模型可学习参数
+
+        optimizer.load_state_dict(checkpoint['optimizer'])  # 加载优化器参数
+        start_epoch = checkpoint['epoch']  # 设置开始的epoch
+        lr_schedule.load_state_dict(checkpoint['lr_schedule'])
+
+    for epoch in range(start_epoch + 1, NUM_EPOCHS + 1):
         train_bar = tqdm(train_loader)  # 生成进度条>>>>>>>>
         # 定义字典统计相关超参数
         running_results = {'batch_sizes': 0, 'd_loss': 0, 'g_loss': 0, 'd_score': 0, 'g_score': 0}
@@ -180,5 +195,14 @@ if __name__ == '__main__':
             data_frame = pd.DataFrame(
                 data={'Loss_D': results['d_loss'], 'Loss_G': results['g_loss'], 'Score_D': results['d_score'],
                       'Score_G': results['g_score'], 'PSNR': results['psnr'], 'SSIM': results['ssim']},
-                index=range(1, epoch + 1))
+                index=range(start_epoch+1, epoch + 1))
             data_frame.to_csv(out_path + 'srf_' + str(UPSCALE_FACTOR) + '_train_results.csv', index_label='Epoch')
+            checkpoint = {
+                "net": netG.state_dict(),
+                'optimizer': optimizer.state_dict(),
+                "epoch": epoch,
+                'lr_schedule': lr_schedule.state_dict()
+            }
+            if not os.path.isdir("model_parameter/"):
+                os.mkdir("model_parameter/")
+            torch.save(checkpoint, 'model_parameter/ckpt_best_%s.pth' % (str(epoch)))
