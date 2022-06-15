@@ -23,22 +23,14 @@ class Generator(nn.Module):
         self.block7 = ResidualBlock(64)
         self.block8 = ResidualBlock(64)
         self.block9 = ResidualBlock(64)
-        self.block10 = ResidualBlock(64)
-        self.block11 = ResidualBlock(64)
-        self.block12 = ResidualBlock(64)
-        self.block13 = ResidualBlock(64)
-        self.block14 = ResidualBlock(64)
-        self.block15 = ResidualBlock(64)
-        self.block16 = ResidualBlock(64)
-        self.block17 = ResidualBlock(64)
 
-        self.block18 = nn.Sequential(
+        self.block10 = nn.Sequential(
             nn.Conv2d(64, 64, kernel_size=3, padding=1),
             nn.BatchNorm2d(64)
         )
-        block19 = [UpsampleBLock(64, 2) for _ in range(upsample_block_num)]
-        block19.append(nn.Conv2d(64, 3, kernel_size=9, padding=4))
-        self.block19 = nn.Sequential(*block19)
+        block11 = [UpsampleBLock(64, 2) for _ in range(upsample_block_num)]
+        block11.append(nn.Conv2d(64, 3, kernel_size=9, padding=4))
+        self.block11 = nn.Sequential(*block11)
     def forward(self, x):
         block1 = self.block1(x)
         block2 = self.block2(block1)
@@ -50,17 +42,9 @@ class Generator(nn.Module):
         block8 = self.block8(block7)
         block9 = self.block9(block8)
         block10 = self.block10(block9)
-        block11 = self.block11(block10)
-        block12 = self.block12(block11)
-        block13 = self.block13(block12)
-        block14 = self.block14(block13)
-        block15 = self.block15(block14)
-        block16 = self.block16(block15)
-        block17 = self.block17(block16)
-        block18 = self.block18(block17)
-        block19 = self.block19(block1 + block18)
+        block11 = self.block11(block1 + block10)
 
-        feature = torch.add(block19, block19)
+        feature = torch.add(block11, block11)
         feature = (torch.tanh(feature) + 1) / 2
 
         return feature
