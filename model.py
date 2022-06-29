@@ -7,8 +7,6 @@ from RSBU import RSBU_CW
 
 class Generator(nn.Module):
     def __init__(self, scale_factor):
-        upsample_block_num = int(math.log(scale_factor, 2))
-
         super(Generator, self).__init__()
         self.block1 = nn.Sequential(
             nn.Conv2d(3, 64, kernel_size=9, padding=4),
@@ -24,15 +22,21 @@ class Generator(nn.Module):
         self.block8 = ResidualBlock(64)
         self.block9 = ResidualBlock(64)
 
-        self.block10 = nn.Sequential(
-            nn.Conv2d(64, 64, kernel_size=3, padding=1),
-            nn.BatchNorm2d(64)
+        # Upsampling convolutional layer.
+        self.block10 = UpsamplingModule(64)
+
+        # Reconnect a layer of convolution block after upsampling.
+        self.block11 = nn.Sequential(
+            nn.Conv2d(64, 64, (3, 3), (1, 1), (1, 1)),
+            nn.LeakyReLU(0.2, True)
         )
-        block11 = [UpsampleBLock(64, 2) for _ in range(upsample_block_num)]
-        block11.append(nn.Conv2d(64, 3, kernel_size=9, padding=4))
-        self.block11 = nn.Sequential(*block11)
+
+        # Output layer.
+        self.block12 = nn.Conv2d(64, 3, (3, 3), (1, 1), (1, 1))
+
     def forward(self, x):
         block1 = self.block1(x)
+
         block2 = self.block2(block1)
         block3 = self.block3(block2)
         block4 = self.block4(block3)
@@ -41,10 +45,15 @@ class Generator(nn.Module):
         block7 = self.block7(block6)
         block8 = self.block8(block7)
         block9 = self.block9(block8)
-        block10 = self.block10(block9)
-        block11 = self.block11(block1 + block10)
 
-        feature = torch.add(block11, block11)
+        block10 = self.block10(block9)
+        block11 = self.block11(block10)
+        block12 = self.block12(block11)
+
+        # out = torch.clamp_(block12, 0.0, 1.0)
+        # return block12
+        
+        feature = torch.add(block12, block12)
         feature = (torch.tanh(feature) + 1) / 2
 
         return feature
@@ -95,7 +104,7 @@ class Discriminator(nn.Module):
             nn.AdaptiveAvgPool2d(1),
             nn.Conv2d(512, 1024, kernel_size=1),
             nn.LeakyReLU(0.2),
-            CBAM(1024),
+            # CBAM(1024),
             nn.Conv2d(1024, 1, kernel_size=1)
         )
 
@@ -104,30 +113,39 @@ class Discriminator(nn.Module):
         return torch.sigmoid(self.net(x).view(batch_size))
 
 
-class UpsampleBLock(nn.Module):
-    def __init__(self, in_channels, up_scale):
-        super(UpsampleBLock, self).__init__()
-        self.conv = nn.Conv2d(in_channels, in_channels * up_scale ** 2, kernel_size=3, padding=1)
-        self.pixel_shuffle = nn.PixelShuffle(up_scale)
-        self.prelu = nn.PReLU()
-        self.rfb = ReceptiveFieldBlock(in_channels, in_channels)
+class UpsamplingModule(nn.Module):
+    def __init__(self, channels: int) -> None:
+        super(UpsamplingModule, self).__init__()
+        self.upsampling = nn.Sequential(
+            nn.Upsample(scale_factor=2, mode="nearest"),
+            ReceptiveFieldBlock(channels, channels),
+            nn.LeakyReLU(0.2, True),
+            nn.Conv2d(channels, channels * 4, (3, 3), (1, 1), (1, 1)),
+            nn.PixelShuffle(2),
+            ReceptiveFieldBlock(channels, channels),
+            nn.LeakyReLU(0.2, True),
+
+            nn.Upsample(scale_factor=2, mode="nearest"),
+            ReceptiveFieldBlock(channels, channels),
+            nn.LeakyReLU(0.2, True),
+            nn.Conv2d(channels, channels * 4, (3, 3), (1, 1), (1, 1)),
+            nn.PixelShuffle(2),
+            ReceptiveFieldBlock(channels, channels),
+            nn.LeakyReLU(0.2, True),
+        )
 
     def forward(self, x):
-        x = self.rfb(x)
-        x = self.conv(x)
-        x = self.pixel_shuffle(x)
-        x = self.prelu(x)
-        return x
+        out = self.upsampling(x)
+
+        return out
 
 class ResidualBlock(nn.Module):
     def __init__(self, channels):
         super(ResidualBlock, self).__init__()
-        # self.CBAM = CBAM(channels)
         self.RSBU_CW = RSBU_CW(channels, channels)
 
     def forward(self, x):
         residual = self.RSBU_CW(x)
-        # residual = self.CBAM(residual)
 
         return x + residual
 
