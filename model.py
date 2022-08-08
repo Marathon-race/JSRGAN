@@ -6,8 +6,6 @@ from RSBU import RSBU_CW
 
 class Generator(nn.Module):
     def __init__(self, scale_factor):
-        upsample_block_num = int(math.log(scale_factor, 2))
-
         super(Generator, self).__init__()
         self.block1 = nn.Sequential(
             nn.Conv2d(3, 64, kernel_size=9, padding=4),
@@ -29,6 +27,7 @@ class Generator(nn.Module):
 
     def forward(self, x):
         block1 = self.block1(x)
+
         block2 = self.block2(block1)
         block3 = self.block3(block2)
         block4 = self.block4(block3)
